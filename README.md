@@ -23,6 +23,13 @@ main :: IO ()
 main = generateSentence sources >>= TIO.putStrLn
 ```
 
+* Result (Random generated)
+    - 明日は陽気です
+    - 僕は陽気です。
+    - 僕はハラ
+    - これはハラ
+    - 僕は陽気ですね
+
 - - -
 
 This library was used [this project](https://github.com/aiya000/hs-gorira).
