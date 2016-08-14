@@ -36,5 +36,10 @@ This library was used [this project](https://github.com/aiya000/hs-gorira).
 
 - - -
 
-This project depends mecab.  
-Please see [here](https://github.com/morishin/hsmecab).
+This project depends mecab.
+
+* Example for install
+    - Debian
+        - `apt install libmecab-dev`
+
+and Please see [here](https://github.com/morishin/hsmecab).
