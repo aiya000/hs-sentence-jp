@@ -3,12 +3,12 @@ module Control.SentenceJP
   ( generateSentence
   ) where
 
-import Control.Monad.IO.Class ( MonadIO (), liftIO )
-import Data.List ( concat, foldl1 )
-import Data.Text ( Text () )
-import Prelude hiding ( foldl1 )
-import System.Random.Shuffle ( shuffleM )
-import Text.MeCab ( new, parseToNodes, Node (..) )
+import Control.Monad.IO.Class (MonadIO, liftIO)
+import Data.List (concat, foldl1)
+import Data.Text (Text)
+import Prelude hiding (foldl1)
+import System.Random.Shuffle (shuffleM)
+import Text.MeCab (new, parseToNodes, Node (..))
 import qualified Data.Text as T
 
 
