@@ -30,4 +30,5 @@ executable show-action
                      , sentence-jp
                      , text
                      , transformers
+  other-modules:       Control.SentenceJP
   default-language:    Haskell2010
