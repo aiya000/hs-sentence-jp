@@ -17,9 +17,9 @@ library
   exposed-modules:     Control.SentenceJP
   build-depends:       base
                      , mecab
+                     , mtl
                      , random-shuffle
                      , text
-                     , transformers
   default-language:    Haskell2010
 
 executable show-action
@@ -29,6 +29,6 @@ executable show-action
                      , random-shuffle
                      , sentence-jp
                      , text
-                     , transformers
+                     , mtl
   other-modules:       Control.SentenceJP
   default-language:    Haskell2010

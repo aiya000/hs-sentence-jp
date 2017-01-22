@@ -1,83 +1,71 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 module Control.SentenceJP
-  ( generateSentence
+  ( generateMessage
   ) where
 
-import Control.Monad.IO.Class (MonadIO, liftIO)
-import Data.List (concat, foldl1)
+import Control.Monad.State.Lazy (State, put, get, evalState)
+import Data.Bifunctor (first)
+import Data.List (delete)
 import Data.Text (Text)
-import Prelude hiding (foldl1)
 import System.Random.Shuffle (shuffleM)
 import Text.MeCab (new, parseToNodes, Node (..))
 import qualified Data.Text as T
 
+-- The sentence without the position
+type SimpleSentence = [Text]
 
---- Define data types
---
-data PositionText = Begin Text | Middle Text | End Text deriving (Show)
+-- The position of a sentence
+data Position a = NonEnd a | End a
+  deriving (Eq)
 
-extractPositionText :: PositionText -> Text
-extractPositionText (Begin  x) = x
-extractPositionText (Middle x) = x
-extractPositionText (End    x) = x
+-- The sentence with the position
+type Sentence = [Position Text]
 
-isEnd :: PositionText -> Bool
-isEnd (End _) = True
-isEnd _       = False
-
-type PositionTextCons = (Text -> PositionText)
-getPosition :: PositionText -> PositionTextCons
-getPosition (Begin  _) = Begin
-getPosition (Middle _) = Middle
-getPosition (End    _) = End
+data MarkovChainer a = MarkovChainer
+  { markovCurrenet :: a
+  , markovResult   :: [a]
+  } deriving (Show)
 
 
-data ChainableWords = ChainableWords PositionText PositionText deriving (Show)
-
-areChainable :: ChainableWords -> ChainableWords -> Bool
-areChainable (ChainableWords _ y1) (ChainableWords x2 _) =
-  let jointL = extractPositionText y1
-      jointR = extractPositionText x2
-  in jointL == jointR
-
-toText :: ChainableWords -> Text
-toText (ChainableWords x y) = extractPositionText x `T.append` extractPositionText y
-
-hasBegin :: ChainableWords -> Bool
-hasBegin (ChainableWords (Begin _) _) = True
-hasBegin _                            = False
+unPosition :: Position a -> a
+unPosition (NonEnd x) = x
+unPosition (End    x) = x
 
 
---- Define functions
---
-
--- | Generating Sentence as Text from [Text]
-generateSentence :: MonadIO m => [Text] -> m Text
-generateSentence sources = do
-  mecab      <- liftIO . new $ ["mecab"]
-  nodes      <- liftIO . mapM (parseToNodes mecab) $ sources
-  let sentences = map (toChainable . filter (/= "") . map nodeSurface) $ nodes
-  sentences' <- liftIO . shuffleM . concat $ sentences
-  return . chainWords $ sentences'
-
-toChainable :: [Text] -> [ChainableWords]
-toChainable [x] = [ChainableWords (Begin x) (End "")]
-toChainable xs  = zipWith ChainableWords xs' (tail xs')
+-- | :D
+generateMessage :: [Text] -> IO (Either String Text)
+generateMessage sources = do
+  mecab      <- new $ ["mecab"]
+  sentences  <- map (toSentence . filter (/= "") . toSimpleSentence) <$> mapM (parseToNodes mecab) sources
+  mixedWords <- shuffleM . concat $ sentences
+  return $ markovChain mixedWords
   where
-    beginWord   = Begin . head $ xs
-    endWord     = End   . last $ xs
-    middleWords = map Middle . init . tail $ xs
-    xs'         = [beginWord] ++ middleWords ++ [endWord]
+    toSimpleSentence :: [Node Text] -> SimpleSentence
+    toSimpleSentence = map nodeSurface
 
-chainWords :: [ChainableWords] -> Text
-chainWords []  = error "aho-baka-hoge"
-chainWords [x] = toText x
-chainWords xs  = toText . foldl1 chain . dropWhile (not . hasBegin) $ xs
+    toSentence :: SimpleSentence -> Sentence
+    toSentence xs = let (y:ys) = reverse xs
+                    in reverse $ End y : map NonEnd ys
+
+markovChain :: [Position Text] -> Either String Text
+markovChain []         = Left "Please take words to me"
+markovChain [_]        = Left "Please take two or more words"
+markovChain (txt:txts) =
+  let pairs     = map (first unPosition) . zip txts $ tail txts
+      firstWord = unPosition txt
+      result = evalState (markovChain' pairs) $ MarkovChainer firstWord []
+  in Right result
   where
-    chain :: ChainableWords -> ChainableWords -> ChainableWords
-    chain a@(ChainableWords _ y1) b@(ChainableWords _ y2)
-      | areChainable a b = if isEnd y1
-                              then a
-                              else let l = Begin . toText $ a
-                                   in ChainableWords l y2
-      | otherwise = a
+    markovChain' :: [(Text, Position Text)] -> State (MarkovChainer Text) Text
+    markovChain' ps = do
+      (MarkovChainer current result) <- get
+      case lookup current ps of
+        -- Finish recurse if the result is Nothing or End
+        Nothing         -> return . T.concat . reverse $ "。" : result
+        Just (End word) -> return . T.concat . reverse $ word : result
+        Just a@(NonEnd word) -> do
+          put $ MarkovChainer word $ word : result
+          -- Consume the one of pair
+          let ps' = delete (current, a) ps
+          markovChain' ps'
