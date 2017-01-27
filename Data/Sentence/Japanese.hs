@@ -9,7 +9,7 @@ import Control.Monad.State.Lazy (State, put, get, evalState)
 import Data.Bifunctor (first)
 import Data.Char (isPunctuation, isLetter)
 import Data.List (delete)
-import Data.Sentence.Japanese.Internal (applyWhen, isAlphaNum')
+import Data.Sentence.Japanese.Internal (applyWhen, isAlphaNum', mapInnerStr)
 import Data.Text (Text)
 import System.Random.Shuffle (shuffleM)
 import Text.MeCab (new, parseToNodes, Node (..))
@@ -44,15 +44,15 @@ unPosition (End    x) = x
 generateMessage :: [GenerateOption] -> [Text] -> IO (Either String Text)
 generateMessage options sources = do
   mecab      <- new $ ["mecab"]
-  --TODO: Refactoring
-  let sources'    = map T.unpack sources
-      sources''   = applyWhen (IgnoreSigns `elem` options) (map (filter $ not . isPunctuation)) sources'
-      sources'''  = applyWhen (IgnoreAlphaNums `elem` options) (map (filter $ not . isAlphaNum')) sources''
-      sources'''' = map T.pack sources'''
-  sentences  <- map (toSentence . filter (/= "") . toSimpleSentence) <$> mapM (parseToNodes mecab) sources''''
+  let sources'   = applyWhen (IgnoreSigns `elem` options) (mapInnerStr filterSigns) <$> sources
+      sources''  = applyWhen (IgnoreAlphaNums `elem` options) (mapInnerStr filterAlNums) <$> sources'
+  sentences  <- map (toSentence . filter (/= "") . toSimpleSentence) <$> mapM (parseToNodes mecab) sources''
   mixedWords <- shuffleM . concat $ sentences
   return $ markovChain mixedWords
   where
+    filterSigns  = filter $ not . isPunctuation
+    filterAlNums = filter $ not . isAlphaNum'
+
     toSimpleSentence :: [Node Text] -> SimpleSentence
     toSimpleSentence = map nodeSurface
 
