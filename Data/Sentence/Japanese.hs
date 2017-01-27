@@ -9,6 +9,7 @@ import Control.Monad.State.Lazy (State, put, get, evalState)
 import Data.Bifunctor (first)
 import Data.Char (isPunctuation, isLetter)
 import Data.List (delete)
+import Data.Sentence.Japanese.Internal (applyWhen, isAlphaNum')
 import Data.Text (Text)
 import System.Random.Shuffle (shuffleM)
 import Text.MeCab (new, parseToNodes, Node (..))
@@ -39,9 +40,6 @@ unPosition :: Position a -> a
 unPosition (NonEnd x) = x
 unPosition (End    x) = x
 
-applyWhen :: Bool -> (a -> a) -> a -> a
-applyWhen b f x = if b then f x else x
-
 -- | :D
 generateMessage :: [GenerateOption] -> [Text] -> IO (Either String Text)
 generateMessage options sources = do
@@ -49,18 +47,12 @@ generateMessage options sources = do
   --TODO: Refactoring
   let sources'    = map T.unpack sources
       sources''   = applyWhen (IgnoreSigns `elem` options) (map (filter $ not . isPunctuation)) sources'
-      sources'''  = applyWhen (IgnoreAlphaNums `elem` options) (map (filter $ not . isAlphaNum)) sources''
+      sources'''  = applyWhen (IgnoreAlphaNums `elem` options) (map (filter $ not . isAlphaNum')) sources''
       sources'''' = map T.pack sources'''
   sentences  <- map (toSentence . filter (/= "") . toSimpleSentence) <$> mapM (parseToNodes mecab) sources''''
   mixedWords <- shuffleM . concat $ sentences
   return $ markovChain mixedWords
   where
-    --NOTE: Use this instead of Data.Char.isAlphaNum, because `isAlphaNum 'あ'` returns True
-    isAlphaNum :: Char -> Bool
-    isAlphaNum c = c `elem` ['A'..'Z']
-                || c `elem` ['a'..'z']
-                || c `elem` ['0'..'9']
-
     toSimpleSentence :: [Node Text] -> SimpleSentence
     toSimpleSentence = map nodeSurface
 

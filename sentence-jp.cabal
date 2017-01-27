@@ -15,6 +15,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Data.Sentence.Japanese
+  other-modules:       Data.Sentence.Japanese.Internal
   build-depends:       base
                      , mecab
                      , mtl
@@ -31,4 +32,5 @@ executable show-action
                      , text
                      , mtl
   other-modules:       Data.Sentence.Japanese
+                       Data.Sentence.Japanese.Internal
   default-language:    Haskell2010
