@@ -2,15 +2,20 @@
 
 module Control.SentenceJP
   ( generateMessage
+  , GenerateOption (..)
   ) where
 
 import Control.Monad.State.Lazy (State, put, get, evalState)
 import Data.Bifunctor (first)
+import Data.Char (isPunctuation, isLetter)
 import Data.List (delete)
 import Data.Text (Text)
 import System.Random.Shuffle (shuffleM)
 import Text.MeCab (new, parseToNodes, Node (..))
 import qualified Data.Text as T
+import qualified System.IO.Unsafe as Debug
+import qualified Data.Text.IO as Debug
+import qualified Control.Monad as Debug
 
 -- The sentence without the position
 type SimpleSentence = [Text]
@@ -27,28 +32,39 @@ data MarkovChainer a = MarkovChainer
   , markovResult   :: [a]
   } deriving (Show)
 
+-- | An option of `generateMessage`
+data GenerateOption = IgnoreSigns      -- ^ ignore 1 byte sign chars
+                    | IgnoreAlphaNums  -- ^ ignore chars of 1 byte alphabet and 1 byte num
+  deriving (Eq, Show)
+
 
 unPosition :: Position a -> a
 unPosition (NonEnd x) = x
 unPosition (End    x) = x
 
+applyWhen :: Bool -> (a -> a) -> a -> a
+applyWhen b f x = if b then f x else x
 
+debug :: Show a => a -> a
+debug x = let a = Debug.unsafePerformIO $ print a in a `seq` x
 -- | :D
-generateMessage :: [Text] -> IO (Either String Text)
-generateMessage sources = do
+generateMessage :: [GenerateOption] -> [Text] -> IO (Either String Text)
+generateMessage options sources = do
   mecab      <- new $ ["mecab"]
-  let sources' = map ignoreSigns sources
-  sentences  <- map (toSentence . filter (/= "") . toSimpleSentence) <$> mapM (parseToNodes mecab) sources'
+  --TODO: Refactoring
+  let sources'    = map T.unpack sources
+      sources''   = applyWhen (IgnoreSigns `elem` options) (map (filter $ not . isPunctuation)) sources'
+      sources'''  = applyWhen (IgnoreAlphaNums `elem` options) (map (filter $ not . isAlphaNum)) sources''
+      sources'''' = map T.pack sources'''
+  sentences  <- map (toSentence . filter (/= "") . toSimpleSentence) <$> mapM (parseToNodes mecab) sources''''
   mixedWords <- shuffleM . concat $ sentences
   return $ markovChain mixedWords
   where
-    -- [A-Z][a-z][0-9][あ-ん][亜-腕]
-    ignoreSigns :: Text -> Text
-    ignoreSigns = T.filter $ \c -> c `elem` ['A'..'Z']
-                                || c `elem` ['a'..'z']
-                                || c `elem` ['0'..'9']
-                                || c `elem` ['あ'..'ん']
-                                || c `elem` ['亜'..'腕']
+    --NOTE: Use this instead of Data.Char.isAlphaNum, because `isAlphaNum 'あ'` returns True
+    isAlphaNum :: Char -> Bool
+    isAlphaNum c = c `elem` ['A'..'Z']
+                || c `elem` ['a'..'z']
+                || c `elem` ['0'..'9']
 
     toSimpleSentence :: [Node Text] -> SimpleSentence
     toSimpleSentence = map nodeSurface
