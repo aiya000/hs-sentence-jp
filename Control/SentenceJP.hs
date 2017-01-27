@@ -44,16 +44,17 @@ generateMessage sources = do
   where
     -- [A-Z][a-z][0-9][あ-ん][亜-腕]
     ignoreSigns :: Text -> Text
-    ignoreSigns = T.filter $ not . \c -> c `elem` ['A'..'Z']
-                                      || c `elem` ['a'..'z']
-                                      || c `elem` ['0'..'9']
-                                      || c `elem` ['あ'..'ん']
-                                      || c `elem` ['亜'..'腕']
+    ignoreSigns = T.filter $ \c -> c `elem` ['A'..'Z']
+                                || c `elem` ['a'..'z']
+                                || c `elem` ['0'..'9']
+                                || c `elem` ['あ'..'ん']
+                                || c `elem` ['亜'..'腕']
 
     toSimpleSentence :: [Node Text] -> SimpleSentence
     toSimpleSentence = map nodeSurface
 
     toSentence :: SimpleSentence -> Sentence
+    toSentence [] = []
     toSentence xs = let (y:ys) = reverse xs
                     in reverse $ End y : map NonEnd ys
 
