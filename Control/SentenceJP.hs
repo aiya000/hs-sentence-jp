@@ -37,10 +37,19 @@ unPosition (End    x) = x
 generateMessage :: [Text] -> IO (Either String Text)
 generateMessage sources = do
   mecab      <- new $ ["mecab"]
-  sentences  <- map (toSentence . filter (/= "") . toSimpleSentence) <$> mapM (parseToNodes mecab) sources
+  let sources' = map ignoreSigns sources
+  sentences  <- map (toSentence . filter (/= "") . toSimpleSentence) <$> mapM (parseToNodes mecab) sources'
   mixedWords <- shuffleM . concat $ sentences
   return $ markovChain mixedWords
   where
+    -- [A-Z][a-z][0-9][あ-ん][亜-腕]
+    ignoreSigns :: Text -> Text
+    ignoreSigns = T.filter $ not . \c -> c `elem` ['A'..'Z']
+                                      || c `elem` ['a'..'z']
+                                      || c `elem` ['0'..'9']
+                                      || c `elem` ['あ'..'ん']
+                                      || c `elem` ['亜'..'腕']
+
     toSimpleSentence :: [Node Text] -> SimpleSentence
     toSimpleSentence = map nodeSurface
 
