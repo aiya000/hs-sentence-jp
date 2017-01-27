@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Control.SentenceJP
+module Data.Sentence.Japanese
   ( generateMessage
   , GenerateOption (..)
   ) where

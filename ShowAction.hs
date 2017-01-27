@@ -3,7 +3,7 @@
 module Main where
 
 import Control.Monad (mapM_)
-import Control.SentenceJP (generateMessage, GenerateOption (IgnoreSigns, IgnoreAlphaNums))
+import Data.Sentence.Japanese (generateMessage, GenerateOption (IgnoreSigns, IgnoreAlphaNums))
 import qualified Data.Text as Text
 import qualified Data.Text.IO as TIO
 
