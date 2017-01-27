@@ -13,9 +13,6 @@ import Data.Text (Text)
 import System.Random.Shuffle (shuffleM)
 import Text.MeCab (new, parseToNodes, Node (..))
 import qualified Data.Text as T
-import qualified System.IO.Unsafe as Debug
-import qualified Data.Text.IO as Debug
-import qualified Control.Monad as Debug
 
 -- The sentence without the position
 type SimpleSentence = [Text]
@@ -45,8 +42,6 @@ unPosition (End    x) = x
 applyWhen :: Bool -> (a -> a) -> a -> a
 applyWhen b f x = if b then f x else x
 
-debug :: Show a => a -> a
-debug x = let a = Debug.unsafePerformIO $ print a in a `seq` x
 -- | :D
 generateMessage :: [GenerateOption] -> [Text] -> IO (Either String Text)
 generateMessage options sources = do
