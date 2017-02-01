@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Data.Sentence.Japanese
@@ -5,7 +6,10 @@ module Data.Sentence.Japanese
   , GenerateOption (..)
   ) where
 
-import Control.Monad.State.Lazy (State, put, get, evalState)
+import Control.Monad.State.Class (MonadState)
+import Control.Monad.State.Lazy (State, put, get, evalState, runState)
+import Control.Monad.Writer.Class (MonadWriter)
+import Control.Monad.Writer.Lazy (WriterT, runWriterT, tell)
 import Data.Bifunctor (first)
 import Data.List (delete)
 import Data.Sentence.Japanese.Internal (isAlphaNum', isNonJapanesePunctuation, mapInnerStr)
@@ -34,6 +38,16 @@ data GenerateOption = IgnoreSigns      -- ^ ignore 1 byte sign chars
                     | IgnoreAlphaNums  -- ^ ignore chars of 1 byte alphabet and 1 byte num
   deriving (Eq, Show)
 
+-- | The type for `markovChain`, with logging and state
+newtype MarkovApp a = MarkovApp
+  { _runMarkovApp :: WriterT [String] (State (MarkovChainer Text)) a
+  } deriving ( Functor, Applicative, Monad
+             , MonadWriter [String], MonadState (MarkovChainer Text)
+             )
+
+-- Extract to (('result', 'log'), 'last_state')
+runMarkovApp :: MarkovApp a -> MarkovChainer Text -> ((a, [String]), MarkovChainer Text)
+runMarkovApp s a = flip runState a . runWriterT . _runMarkovApp $ s
 
 unPosition :: Position a -> a
 unPosition (NonEnd x) = x
@@ -80,7 +94,7 @@ markovChain [_]        = Left "Please take two or more words"
 markovChain (txt:txts) =
   let pairs     = map (first unPosition) . zip txts $ tail txts
       firstWord = unPosition txt
-      result = evalState (markovChain' pairs) $ MarkovChainer firstWord []
+      result    = evalState (markovChain' pairs) $ MarkovChainer firstWord []
   in Right result
   where
     markovChain' :: [(Text, Position Text)] -> State (MarkovChainer Text) Text
