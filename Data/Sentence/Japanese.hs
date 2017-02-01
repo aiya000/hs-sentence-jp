@@ -56,24 +56,32 @@ unPosition (End    x) = x
 
 -- | :D
 generateMessage :: [GenerateOption] -> [Text] -> IO (Either String Text)
+generateMessage options sources = do
+  result <- generateMessageWithLog options sources
+  case result of
+    Left  e -> return $ Left e
+    Right a -> return . Right $ fst a
+
+-- | :)
+generateMessageWithLog :: [GenerateOption] -> [Text] -> IO (Either String (Text, [String]))
 
 -- Remove the sign chars from sources,
 -- but don't remove if the char is Japanese punctuation (Ex: '。', '、')
-generateMessage options sources | IgnoreSigns `elem` options = do
+generateMessageWithLog options sources | IgnoreSigns `elem` options = do
   let sources' = map (mapInnerStr filterSigns) sources
-  flip generateMessage sources' $ delete IgnoreSigns options
+  flip generateMessageWithLog sources' $ delete IgnoreSigns options
   where
     filterSigns = filter $ not . isNonJapanesePunctuation
 
 -- Remove the alphabet chars and the number chars from sources
-generateMessage options sources | IgnoreAlphaNums `elem` options = do
+generateMessageWithLog options sources | IgnoreAlphaNums `elem` options = do
   let sources' = map (mapInnerStr filterAlNums) sources
-  flip generateMessage sources' $ delete IgnoreAlphaNums options
+  flip generateMessageWithLog sources' $ delete IgnoreAlphaNums options
   where
     filterAlNums = filter $ not . isAlphaNum'
 
 -- Generate the message
-generateMessage options sources = do
+generateMessageWithLog options sources = do
   mecab      <- new $ ["mecab"]
   sentences  <- map (toSentence . filter (/= "") . toSimpleSentence) <$> mapM (parseToNodes mecab) sources
   mixedWords <- shuffleM . concat $ sentences
@@ -88,16 +96,17 @@ generateMessage options sources = do
                     in reverse $ End y : map NonEnd ys
 
 
-markovChain :: [Position Text] -> Either String Text
+-- | Generate a sentence with logs
+markovChain :: [Position Text] -> Either String (Text, [String])
 markovChain []         = Left "Please take words to me"
 markovChain [_]        = Left "Please take two or more words"
 markovChain (txt:txts) =
   let pairs     = map (first unPosition) . zip txts $ tail txts
       firstWord = unPosition txt
-      result    = evalState (markovChain' pairs) $ MarkovChainer firstWord []
+      result    = fst . runMarkovApp (markovChain' pairs) $ MarkovChainer firstWord []
   in Right result
   where
-    markovChain' :: [(Text, Position Text)] -> State (MarkovChainer Text) Text
+    markovChain' :: [(Text, Position Text)] -> MarkovApp Text
     markovChain' ps = do
       (MarkovChainer current result) <- get
       case lookup current ps of
