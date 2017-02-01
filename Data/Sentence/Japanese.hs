@@ -40,6 +40,7 @@ unPosition :: Position a -> a
 unPosition (NonEnd x) = x
 unPosition (End    x) = x
 
+
 -- | :D
 generateMessage :: [GenerateOption] -> [Text] -> IO (Either String Text)
 generateMessage options sources = do
@@ -60,6 +61,7 @@ generateMessage options sources = do
     toSentence [] = []
     toSentence xs = let (y:ys) = reverse xs
                     in reverse $ End y : map NonEnd ys
+
 
 markovChain :: [Position Text] -> Either String Text
 markovChain []         = Left "Please take words to me"

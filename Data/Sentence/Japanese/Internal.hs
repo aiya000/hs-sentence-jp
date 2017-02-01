@@ -14,7 +14,7 @@ applyWhen :: Bool -> (a -> a) -> a -> a
 applyWhen b f x = if b then f x else x
 
 -- |
--- Instead of Data.Char.isAlphaNum, for strict alpha nums.
+-- The instead of Data.Char.isAlphaNum.
 -- (`isAlphaNum 'あ'` returns True, why ?)
 isAlphaNum' :: Char -> Bool
 isAlphaNum' c = c `elem` ['A'..'Z']
