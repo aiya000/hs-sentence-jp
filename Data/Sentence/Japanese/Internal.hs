@@ -1,17 +1,12 @@
 -- | General logics
 module Data.Sentence.Japanese.Internal
-  ( applyWhen
-  , isAlphaNum'
+  ( isAlphaNum'
   , mapInnerStr
   ) where
 
 import Data.Text (Text)
 import qualified Data.Text as T
 
-
--- | Apply the function if given Bool is True
-applyWhen :: Bool -> (a -> a) -> a -> a
-applyWhen b f x = if b then f x else x
 
 -- |
 -- The instead of Data.Char.isAlphaNum.

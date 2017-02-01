@@ -9,7 +9,7 @@ import Control.Monad.State.Lazy (State, put, get, evalState)
 import Data.Bifunctor (first)
 import Data.Char (isPunctuation, isLetter)
 import Data.List (delete)
-import Data.Sentence.Japanese.Internal (applyWhen, isAlphaNum', mapInnerStr)
+import Data.Sentence.Japanese.Internal (isAlphaNum', mapInnerStr)
 import Data.Text (Text)
 import System.Random.Shuffle (shuffleM)
 import Text.MeCab (new, parseToNodes, Node (..))
@@ -43,17 +43,28 @@ unPosition (End    x) = x
 
 -- | :D
 generateMessage :: [GenerateOption] -> [Text] -> IO (Either String Text)
+
+-- Remove the sign chars from sources
+generateMessage options sources | IgnoreSigns `elem` options = do
+  let sources' = map (mapInnerStr filterSigns) sources
+  flip generateMessage sources' $ delete IgnoreSigns options
+  where
+    filterSigns  = filter $ not . isPunctuation
+
+-- Remove the alphabet chars and the number chars from sources
+generateMessage options sources | IgnoreAlphaNums `elem` options = do
+  let sources' = map (mapInnerStr filterAlNums) sources
+  flip generateMessage sources' $ delete IgnoreAlphaNums options
+  where
+    filterAlNums = filter $ not . isAlphaNum'
+
+-- Generate the message
 generateMessage options sources = do
   mecab      <- new $ ["mecab"]
-  let sources'   = applyWhen (IgnoreSigns `elem` options) (mapInnerStr filterSigns) <$> sources
-      sources''  = applyWhen (IgnoreAlphaNums `elem` options) (mapInnerStr filterAlNums) <$> sources'
-  sentences  <- map (toSentence . filter (/= "") . toSimpleSentence) <$> mapM (parseToNodes mecab) sources''
+  sentences  <- map (toSentence . filter (/= "") . toSimpleSentence) <$> mapM (parseToNodes mecab) sources
   mixedWords <- shuffleM . concat $ sentences
   return $ markovChain mixedWords
   where
-    filterSigns  = filter $ not . isPunctuation
-    filterAlNums = filter $ not . isAlphaNum'
-
     toSimpleSentence :: [Node Text] -> SimpleSentence
     toSimpleSentence = map nodeSurface
 
