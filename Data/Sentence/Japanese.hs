@@ -7,9 +7,8 @@ module Data.Sentence.Japanese
 
 import Control.Monad.State.Lazy (State, put, get, evalState)
 import Data.Bifunctor (first)
-import Data.Char (isPunctuation, isLetter)
 import Data.List (delete)
-import Data.Sentence.Japanese.Internal (isAlphaNum', mapInnerStr)
+import Data.Sentence.Japanese.Internal (isAlphaNum', isNonJapanesePunctuation, mapInnerStr)
 import Data.Text (Text)
 import System.Random.Shuffle (shuffleM)
 import Text.MeCab (new, parseToNodes, Node (..))
@@ -44,12 +43,13 @@ unPosition (End    x) = x
 -- | :D
 generateMessage :: [GenerateOption] -> [Text] -> IO (Either String Text)
 
--- Remove the sign chars from sources
+-- Remove the sign chars from sources,
+-- but don't remove if the char is Japanese punctuation (Ex: '。', '、')
 generateMessage options sources | IgnoreSigns `elem` options = do
   let sources' = map (mapInnerStr filterSigns) sources
   flip generateMessage sources' $ delete IgnoreSigns options
   where
-    filterSigns  = filter $ not . isPunctuation
+    filterSigns = filter $ not . isNonJapanesePunctuation
 
 -- Remove the alphabet chars and the number chars from sources
 generateMessage options sources | IgnoreAlphaNums `elem` options = do
