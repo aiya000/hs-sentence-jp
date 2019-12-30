@@ -1,7 +1,8 @@
 resolver: lts-9.2
 packages:
 - '.'
-- location: './hsmecab'
-extra-deps: []
+extra-deps:
+  - git: https://github.com/aiya000/hsmecab
+    commit: 40b990637fe10d0a9911b26df1c2b91deb152c6e
 flags: {}
 extra-package-dbs: []
